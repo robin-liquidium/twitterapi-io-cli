@@ -77,7 +77,13 @@ def request_json(context: dict[str, str], path: str, params: Optional[dict[str, 
     if context["provider"] == "xquik":
         cmd.extend(["-H", f"xquik-api-contract: {XQUIK_API_CONTRACT}"])
     cmd.append(url)
-    out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, timeout=60)
+    try:
+        out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, timeout=60)
+    except subprocess.CalledProcessError as exc:
+        body = exc.output.decode("utf-8", errors="replace").strip()
+        raise SystemExit(f"API request failed: {body}") from None
+    except subprocess.TimeoutExpired:
+        raise SystemExit("API request timed out") from None
     return json.loads(out.decode("utf-8"))
 
 
@@ -89,7 +95,12 @@ def curl_json(path: str, params: Optional[dict[str, Any]] = None) -> dict[str, A
 
 
 def quoted_path_part(value: Any) -> str:
-    return quote(str(value).strip().lstrip("@"), safe="")
+    if value is None:
+        raise SystemExit("Missing required path value")
+    text = str(value).strip().lstrip("@")
+    if not text:
+        raise SystemExit("Missing required path value")
+    return quote(text, safe="")
 
 
 def xquik_tweet(tweet: dict[str, Any], author: Optional[dict[str, Any]] = None) -> dict[str, Any]:
