@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "twitterapi-io-cli"
 version = "0.1.0"
-description = "Read-only CLI for twitterapi.io tweets, users, timelines, and advanced search"
+description = "Read-only CLI for twitterapi.io tweets, users, timelines, advanced search, and optional Xquik reads"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = []

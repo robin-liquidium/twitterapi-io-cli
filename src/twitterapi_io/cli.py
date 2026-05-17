@@ -9,11 +9,13 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 CONFIG_DIR = Path.home() / ".config" / "twitterapi-io"
 CONFIG_PATH = CONFIG_DIR / "config.json"
 BASE_URL = "https://api.twitterapi.io"
+XQUIK_BASE_URL = "https://xquik.com/api/v1"
+XQUIK_API_CONTRACT = "2026-04-29"
 DEFAULT_UA = "twitterapi-io-cli/0.1.0 (+https://github.com/ropl-btc/twitterapi-io-cli)"
 
 
@@ -33,17 +35,30 @@ def save_config(data: dict[str, Any]) -> None:
     chmod_600(CONFIG_PATH)
 
 
-def get_api_key() -> str:
+def get_api_context() -> dict[str, str]:
     data = load_raw_config()
-    key = os.getenv("TWITTERAPI_IO_KEY") or data.get("api_key")
-    if not key:
-        raise SystemExit("Missing TWITTERAPI_IO_KEY. Set the env var or run: twitterapi-io auth --api-key <key>")
-    return key
+    twitterapi_key = os.getenv("TWITTERAPI_IO_KEY") or data.get("api_key")
+    if twitterapi_key:
+        return {
+            "provider": "twitterapi.io",
+            "api_key": str(twitterapi_key),
+            "base_url": os.getenv("TWITTERAPI_IO_BASE_URL", BASE_URL).rstrip("/"),
+        }
+    xquik_key = os.getenv("XQUIK_API_KEY")
+    if xquik_key:
+        return {
+            "provider": "xquik",
+            "api_key": xquik_key,
+            "base_url": os.getenv("XQUIK_BASE_URL", XQUIK_BASE_URL).rstrip("/"),
+        }
+    raise SystemExit(
+        "Missing TWITTERAPI_IO_KEY or XQUIK_API_KEY. "
+        "Set the env var or run: twitterapi-io auth --api-key <key>"
+    )
 
 
-def curl_json(path: str, params: Optional[dict[str, Any]] = None) -> dict[str, Any]:
-    api_key = get_api_key()
-    url = BASE_URL + path
+def request_json(context: dict[str, str], path: str, params: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+    url = context["base_url"] + path
     if params:
         encoded = urlencode({k: v for k, v in params.items() if v is not None and v != ""})
         if encoded:
@@ -53,15 +68,114 @@ def curl_json(path: str, params: Optional[dict[str, Any]] = None) -> dict[str, A
         "-sS",
         "--fail-with-body",
         "-H",
-        f"x-api-key: {api_key}",
+        f"x-api-key: {context['api_key']}",
         "-H",
         "Accept: application/json",
         "-H",
         f"User-Agent: {DEFAULT_UA}",
-        url,
     ]
+    if context["provider"] == "xquik":
+        cmd.extend(["-H", f"xquik-api-contract: {XQUIK_API_CONTRACT}"])
+    cmd.append(url)
     out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, timeout=60)
     return json.loads(out.decode("utf-8"))
+
+
+def curl_json(path: str, params: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+    context = get_api_context()
+    if context["provider"] == "xquik":
+        return xquik_json(context, path, params or {})
+    return request_json(context, path, params)
+
+
+def quoted_path_part(value: Any) -> str:
+    return quote(str(value).strip().lstrip("@"), safe="")
+
+
+def xquik_tweet(tweet: dict[str, Any], author: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+    normalized = dict(tweet)
+    if author and not normalized.get("author"):
+        normalized["author"] = xquik_user(author)
+    elif isinstance(normalized.get("author"), dict):
+        normalized["author"] = xquik_user(normalized["author"])
+    if not normalized.get("url") and normalized.get("id"):
+        author_data = normalized.get("author") or {}
+        username = author_data.get("userName") or author_data.get("username")
+        if username:
+            normalized["url"] = f"https://x.com/{username}/status/{normalized['id']}"
+    return normalized
+
+
+def xquik_user(user: dict[str, Any]) -> dict[str, Any]:
+    normalized = dict(user)
+    if "userName" not in normalized and normalized.get("username"):
+        normalized["userName"] = normalized.get("username")
+    if "isBlueVerified" not in normalized and "verified" in normalized:
+        normalized["isBlueVerified"] = normalized.get("verified")
+    if not normalized.get("url") and normalized.get("userName"):
+        normalized["url"] = f"https://x.com/{normalized['userName']}"
+    return normalized
+
+
+def xquik_page(page: dict[str, Any], key: str = "tweets") -> dict[str, Any]:
+    values = page.get(key) or []
+    if key == "tweets":
+        values = [xquik_tweet(tweet) for tweet in values]
+    elif key == "users":
+        values = [xquik_user(user) for user in values]
+    return {
+        key: values,
+        "has_next_page": bool(page.get("has_next_page")),
+        "next_cursor": page.get("next_cursor") or "",
+    }
+
+
+def xquik_json(context: dict[str, str], path: str, params: dict[str, Any]) -> dict[str, Any]:
+    if path == "/twitter/tweets":
+        tweet_id = str(params.get("tweet_ids") or "").split(",")[0]
+        data = request_json(context, f"/x/tweets/{quoted_path_part(tweet_id)}")
+        tweet = xquik_tweet(data.get("tweet") or {}, data.get("author"))
+        return {"tweets": [tweet] if tweet else []}
+    if path == "/twitter/user/info":
+        data = request_json(context, f"/x/users/{quoted_path_part(params.get('userName'))}")
+        return {"data": xquik_user(data)}
+    if path == "/twitter/user/last_tweets":
+        user_id = params.get("userName") or params.get("userId")
+        query = {
+            "cursor": params.get("cursor"),
+            "includeReplies": params.get("includeReplies"),
+        }
+        path = f"/x/users/{quoted_path_part(user_id)}/tweets"
+        return xquik_page(request_json(context, path, query))
+    if path == "/twitter/tweet/advanced_search":
+        query = {
+            "q": params.get("query"),
+            "queryType": params.get("queryType"),
+            "cursor": params.get("cursor"),
+        }
+        return xquik_page(request_json(context, "/x/tweets/search", query))
+    if path == "/twitter/tweet/replies":
+        tweet_id = params.get("tweetId")
+        query = {
+            "cursor": params.get("cursor"),
+            "sinceTime": params.get("sinceTime"),
+            "untilTime": params.get("untilTime"),
+        }
+        path = f"/x/tweets/{quoted_path_part(tweet_id)}/replies"
+        return xquik_page(request_json(context, path, query))
+    if path == "/twitter/tweet/quotes":
+        tweet_id = params.get("tweetId")
+        path = f"/x/tweets/{quoted_path_part(tweet_id)}/quotes"
+        return xquik_page(request_json(context, path, {"cursor": params.get("cursor")}))
+    if path == "/twitter/tweet/thread_context":
+        tweet_id = params.get("tweetId")
+        path = f"/x/tweets/{quoted_path_part(tweet_id)}/thread"
+        return xquik_page(request_json(context, path, {"cursor": params.get("cursor")}))
+    if path == "/twitter/user/mentions":
+        username = params.get("userName")
+        path = f"/x/users/{quoted_path_part(username)}/mentions"
+        return xquik_page(request_json(context, path, {"cursor": params.get("cursor")}))
+    raise SystemExit(f"Xquik backend does not support path: {path}")
 
 
 def extract_tweet_id(value: str) -> str:
@@ -87,6 +201,9 @@ def pick_photo_url(tweet: dict[str, Any]) -> Optional[str]:
     for item in media:
         if item.get("type") == "photo" and item.get("media_url_https"):
             return item.get("media_url_https")
+    for item in tweet.get("media") or []:
+        if item.get("type") == "photo" and item.get("mediaUrl"):
+            return item.get("mediaUrl")
     return None
 
 
@@ -94,7 +211,7 @@ def minimal_tweet(tweet: dict[str, Any]) -> dict[str, Any]:
     author = tweet.get("author") or {}
     return {
         "tweet_id": tweet.get("id"),
-        "author": author.get("userName"),
+        "author": author.get("userName") or author.get("username"),
         "author_name": author.get("name"),
         "content": tweet.get("text"),
         "created_at": tweet.get("createdAt"),
@@ -111,7 +228,7 @@ def minimal_tweet(tweet: dict[str, Any]) -> dict[str, Any]:
 def minimal_user(user: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": user.get("id"),
-        "username": user.get("userName"),
+        "username": user.get("userName") or user.get("username"),
         "name": user.get("name"),
         "description": user.get("description"),
         "location": user.get("location"),
@@ -119,7 +236,7 @@ def minimal_user(user: dict[str, Any]) -> dict[str, Any]:
         "following": user.get("following"),
         "statuses_count": user.get("statusesCount"),
         "media_count": user.get("mediaCount"),
-        "is_blue_verified": user.get("isBlueVerified"),
+        "is_blue_verified": user.get("isBlueVerified") if "isBlueVerified" in user else user.get("verified"),
         "verified_type": user.get("verifiedType"),
         "url": user.get("url"),
     }
@@ -179,8 +296,9 @@ def cmd_help(args: argparse.Namespace) -> int:
         },
         "notes": [
             "Read-only CLI: no posting, liking, replying, deleting, or write actions are exposed.",
-            "API auth uses the x-api-key header, per twitterapi.io docs.",
+            "API auth uses the x-api-key header.",
             "The CLI can read TWITTERAPI_IO_KEY from env or from ~/.config/twitterapi-io/config.json after auth.",
+            "If no TWITTERAPI_IO_KEY is configured, XQUIK_API_KEY selects the optional Xquik read backend.",
             "Advanced search uses cursor pagination via next_cursor until limits or end of results.",
             "For date filters, prefer working Twitter operators like since_time:, until_time:, and within_time:.",
         ],

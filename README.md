@@ -2,7 +2,7 @@
 
 # twitterapi-io-cli
 
-Read-only CLI for `twitterapi.io`, built for **OpenClaw**, **Claude Code**, and other AI agents that need a simple, reusable interface for reading Twitter/X data.
+Read-only CLI for `twitterapi.io`, built for **OpenClaw**, **Claude Code**, and other AI agents that need a simple, reusable interface for reading Twitter/X data. It can also use Xquik as a compatible read backend when `XQUIK_API_KEY` is set and no `TWITTERAPI_IO_KEY` is configured.
 
 This repo gives you two things:
 - a small installable CLI: `twitterapi-io`
@@ -11,6 +11,7 @@ This repo gives you two things:
 ## What this is
 
 - a small **read-only CLI** for `twitterapi.io`
+- optional Xquik read backend support through `XQUIK_API_KEY`
 - a matching **OpenClaw skill** under `skills/twitterapi-io`
 - opinionated commands for common read workflows
 - designed to be easy for humans and AI agents to use repeatedly
@@ -24,6 +25,7 @@ This repo gives you two things:
 ## Features
 
 - save `TWITTERAPI_IO_KEY` locally with `auth`
+- use `XQUIK_API_KEY` from the environment as an optional read backend
 - fetch one tweet by id or URL
 - fetch one user by username
 - fetch recent tweets for a user
@@ -99,6 +101,14 @@ You can also use an env var instead:
 ```bash
 export TWITTERAPI_IO_KEY='YOUR_KEY'
 ```
+
+To use Xquik instead, leave `TWITTERAPI_IO_KEY` unset and provide:
+
+```bash
+export XQUIK_API_KEY='YOUR_KEY'
+```
+
+TwitterAPI.io stays the default when both keys are present.
 
 ## Usage examples
 
@@ -210,6 +220,17 @@ This CLI is based on the official twitterapi.io docs, especially:
 - `GET /twitter/user/mentions`
 - `GET /twitter/tweet/advanced_search`
 - authentication via `x-api-key`
+
+Optional Xquik backend mapping is based on the Xquik API reference:
+- `GET /x/tweets/{id}`
+- `GET /x/users/{id}`
+- `GET /x/users/{id}/tweets`
+- `GET /x/tweets/search`
+- `GET /x/tweets/{id}/replies`
+- `GET /x/tweets/{id}/quotes`
+- `GET /x/tweets/{id}/thread`
+- `GET /x/users/{id}/mentions`
+- authentication via `x-api-key` with `xquik-api-contract: 2026-04-29`
 
 ## License
 
