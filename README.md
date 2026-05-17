@@ -2,7 +2,7 @@
 
 # twitterapi-io-cli
 
-Read-only CLI for `twitterapi.io`, built for **OpenClaw**, **Claude Code**, and other AI agents that need a simple, reusable interface for reading Twitter/X data. It can also use Xquik as a compatible read backend when `XQUIK_API_KEY` is set and no `TWITTERAPI_IO_KEY` is configured.
+Read-only CLI for `twitterapi.io`, built for **OpenClaw**, **Claude Code**, and other AI agents that need a simple, reusable interface for reading Twitter/X data. It can also use Xquik as a compatible read backend when `XQUIK_API_KEY` is set and no TwitterAPI.io key exists in env or the saved config.
 
 This repo gives you two things:
 - a small installable CLI: `twitterapi-io`
@@ -108,7 +108,7 @@ To use Xquik instead, leave `TWITTERAPI_IO_KEY` unset and provide:
 export XQUIK_API_KEY='YOUR_KEY'
 ```
 
-TwitterAPI.io stays the default when both keys are present.
+Provider order is `TWITTERAPI_IO_KEY`, saved `api_key` in `~/.config/twitterapi-io/config.json`, then `XQUIK_API_KEY`. TwitterAPI.io stays the default when a TwitterAPI.io key exists in either env or saved config.
 
 ## Usage examples
 

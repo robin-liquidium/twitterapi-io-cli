@@ -309,7 +309,7 @@ def cmd_help(args: argparse.Namespace) -> int:
             "Read-only CLI: no posting, liking, replying, deleting, or write actions are exposed.",
             "API auth uses the x-api-key header.",
             "The CLI can read TWITTERAPI_IO_KEY from env or from ~/.config/twitterapi-io/config.json after auth.",
-            "If no TWITTERAPI_IO_KEY is configured, XQUIK_API_KEY selects the optional Xquik read backend.",
+            "Provider order: TWITTERAPI_IO_KEY, saved config api_key, then XQUIK_API_KEY.",
             "Advanced search uses cursor pagination via next_cursor until limits or end of results.",
             "For date filters, prefer working Twitter operators like since_time:, until_time:, and within_time:.",
         ],

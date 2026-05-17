@@ -5,7 +5,7 @@ description: Fetch and paginate Twitter/X data using twitterapi.io, with optiona
 
 # twitterapi-io
 
-Use the installed `twitterapi-io` CLI for read-only twitterapi.io access. If `TWITTERAPI_IO_KEY` is not configured, `XQUIK_API_KEY` selects the optional Xquik read backend for the same read commands.
+Use the installed `twitterapi-io` CLI for read-only twitterapi.io access. Provider order is `TWITTERAPI_IO_KEY`, saved `api_key` in `~/.config/twitterapi-io/config.json`, then `XQUIK_API_KEY` for the optional Xquik read backend.
 
 This skill exists to make common twitterapi.io reads simple and low-noise instead of rebuilding custom API calls each time.
 
@@ -63,6 +63,8 @@ To use Xquik as the read backend instead:
 ```bash
 export XQUIK_API_KEY='YOUR_KEY'
 ```
+
+Make sure no `TWITTERAPI_IO_KEY` env var or saved `api_key` config is present if you want Xquik selected.
 
 ### Fetch one tweet
 
@@ -147,6 +149,7 @@ twitterapi-io search --query '$BTC' --since-time 1741219200 --until-time 1741305
 1. Read `references/links.md` if you need the underlying provider docs links.
 2. Ensure the `twitterapi-io` CLI is installed.
 3. Ensure the API key exists via `auth`, `TWITTERAPI_IO_KEY`, or `XQUIK_API_KEY`.
+   Provider order is `TWITTERAPI_IO_KEY`, saved config `api_key`, then `XQUIK_API_KEY`.
 4. Use `tweet`, `user`, `user-tweets`, `replies`, `quotes`, `thread-context`, `mentions`, or `search` as needed.
 5. Keep reads narrow and intentional.
 
