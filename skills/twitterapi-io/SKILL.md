@@ -1,11 +1,11 @@
 ---
 name: twitterapi-io
-description: Fetch and paginate Twitter/X data using twitterapi.io. Use when you need to fetch one tweet, fetch a user profile, get recent tweets for a user, fetch replies, quote tweets, thread context, or mentions, or run twitterapi.io advanced search queries without hand-rolling raw API requests each time.
+description: Fetch and paginate Twitter/X data using twitterapi.io, with optional Xquik read backend support. Use when you need to fetch one tweet, fetch a user profile, get recent tweets for a user, fetch replies, quote tweets, thread context, or mentions, or run advanced search queries without hand-rolling raw API requests each time.
 ---
 
 # twitterapi-io
 
-Use the installed `twitterapi-io` CLI for read-only twitterapi.io access.
+Use the installed `twitterapi-io` CLI for read-only twitterapi.io access. Provider order is `TWITTERAPI_IO_KEY`, saved `api_key` in `~/.config/twitterapi-io/config.json`, then `XQUIK_API_KEY` for the optional Xquik read backend.
 
 This skill exists to make common twitterapi.io reads simple and low-noise instead of rebuilding custom API calls each time.
 
@@ -16,6 +16,7 @@ This skill exists to make common twitterapi.io reads simple and low-noise instea
 - Prefer compact JSON output by default.
 - Use `--raw` only when you actually need full API objects.
 - Prefer the official docs links in `references/links.md` when validating endpoint behavior.
+- TwitterAPI.io stays the default when both provider keys are present.
 
 ## Installation preference
 
@@ -56,6 +57,14 @@ You can also use env:
 ```bash
 export TWITTERAPI_IO_KEY='YOUR_KEY'
 ```
+
+To use Xquik as the read backend instead:
+
+```bash
+export XQUIK_API_KEY='YOUR_KEY'
+```
+
+Make sure no `TWITTERAPI_IO_KEY` env var or saved `api_key` config is present if you want Xquik selected.
 
 ### Fetch one tweet
 
@@ -137,9 +146,10 @@ twitterapi-io search --query '$BTC' --since-time 1741219200 --until-time 1741305
 
 ## Workflow
 
-1. Read `references/links.md` if you need the underlying official twitterapi.io docs links.
+1. Read `references/links.md` if you need the underlying provider docs links.
 2. Ensure the `twitterapi-io` CLI is installed.
-3. Ensure the API key exists via `auth` or env.
+3. Ensure the API key exists via `auth`, `TWITTERAPI_IO_KEY`, or `XQUIK_API_KEY`.
+   Provider order is `TWITTERAPI_IO_KEY`, saved config `api_key`, then `XQUIK_API_KEY`.
 4. Use `tweet`, `user`, `user-tweets`, `replies`, `quotes`, `thread-context`, `mentions`, or `search` as needed.
 5. Keep reads narrow and intentional.
 

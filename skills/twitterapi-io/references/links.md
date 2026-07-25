@@ -8,11 +8,15 @@ Core official docs used for this CLI:
 - Get Tweets by IDs: https://docs.twitterapi.io/api-reference/endpoint/get_tweet_by_ids
 - Get User Info: https://docs.twitterapi.io/api-reference/endpoint/get_user_by_username
 - Get User Last Tweets: https://docs.twitterapi.io/api-reference/endpoint/get_user_last_tweets
-- Get Tweet Replies: https://docs.twitterapi.io/api-reference/endpoint/get_tweet_replies
-- Get Tweet Quotations: https://docs.twitterapi.io/api-reference/endpoint/get_tweet_quotations
+- Get Tweet Replies: https://docs.twitterapi.io/api-reference/endpoint/get_tweet_reply
+- Get Tweet Quotations: https://docs.twitterapi.io/api-reference/endpoint/get_tweet_quote
 - Get Tweet Thread Context: https://docs.twitterapi.io/api-reference/endpoint/get_tweet_thread_context
-- Get User Mentions: https://docs.twitterapi.io/api-reference/endpoint/get_user_mentions
+- Get User Mentions: https://docs.twitterapi.io/api-reference/endpoint/get_user_mention
 - Advanced Search: https://docs.twitterapi.io/api-reference/endpoint/tweet_advanced_search
+
+Optional Xquik backend docs:
+- API overview: https://docs.xquik.com/api-reference/overview
+- Authentication: https://docs.xquik.com/quickstart
 
 Important notes from docs:
 - API auth uses the `x-api-key` header.
@@ -26,3 +30,8 @@ Important notes from docs:
 - `GET /twitter/tweet/advanced_search` accepts `query`, `queryType`, and `cursor`.
 - Advanced search and timeline-style endpoints paginate with `has_next_page` + `next_cursor`.
 - For search date filters, prefer `since_time:`, `until_time:`, and `within_time:` operators.
+
+Xquik notes:
+- API auth uses the `x-api-key` header and `xquik-api-contract: 2026-04-29`.
+- Base URL defaults to `https://xquik.com/api/v1`.
+- The CLI maps the same read commands to Xquik tweet lookup, user lookup, user tweets, search, replies, quotes, thread, and mentions endpoints.
